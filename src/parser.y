@@ -13,10 +13,7 @@
 #include "cmdalias.h"
 #include "lexer.h"
 
-#define YYERROR_VERBOSE
-#define	YYPARSE_PARAM commands
-
-void yyerror(const char *s, ...) {
+void yyerror(command_list **commands, const char *s, ...) {
 	extern int yylineno;
 
 	va_list ap;
@@ -89,6 +86,9 @@ static void rtrim(char* s) {
 
 %}
 
+%parse-param {command_list **commands}
+%error-verbose
+
 %union {
 	char *str;
 	struct string_list_t *str_list;
@@ -127,7 +127,8 @@ command_list:
 include:
 		T_INCLUDE T_STR ';' {
 			if (!(is_dir($2) ? config_pushdir($2) : config_pushfile($2))) {
-				yyerror("Unable to load %s", $2);
+                command_list **cmds = (command_list **) commands;
+				yyerror(cmds, "Unable to load %s", $2);
 			}
 			free($2);
 		}
@@ -234,7 +235,8 @@ string_or_subcmd:
 	}
 
 	if (fgets(res, sizeof(res)-1, fp) == NULL) {
-		yyerror("Error while fetching result\n");
+        command_list **cmds = (command_list **) commands;
+		yyerror(cmds, "Error while fetching result\n");
 	}
 
 	pclose(fp);
